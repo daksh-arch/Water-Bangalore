@@ -4,44 +4,59 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bangalore Urban Water Flow – 2021</title>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
  body {
-  font-family: Arial, sans-serif;
+  font-family: 'Open Sans', Arial, sans-serif;
   margin: 0;
-  padding: 20px;
-  background: #fafafa;
-  color: #111;
+  padding: 40px;
+  background: #f6f6f6;
+  color: #333;
  }
  h1 {
-  font-size: 2em;
+  font-family: 'Merriweather', serif;
+  font-size: 2.5em;
+  font-weight: 700;
   margin-bottom: 0.2em;
+  color: #111;
  }
  h2 {
-  font-size: 1.2em;
-  font-weight: normal;
+  font-family: 'Merriweather', serif;
+  font-size: 1.3em;
+  font-weight: 300;
   margin-top: 0;
-  margin-bottom: 1.5em;
+  margin-bottom: 2em;
   color: #555;
  }
  #chart {
   width: 100%;
   height: 600px;
+  margin-top: 20px;
  }
  svg {
   width: 100%;
   height: 100%;
  }
  .node rect {
-  fill: #5dade2;
-  stroke: #1b4f72;
+  stroke: #1b5278;
+  rx: 2;
+  transition: fill-opacity 0.3s;
+ }
+ .node rect:hover {
+  fill-opacity: 0.8;
  }
  .node text {
   pointer-events: none;
-  font-size: 12px;
+  font-size: 13px;
+  fill: #111;
  }
  .link {
   fill: none;
-  stroke-opacity: 0.5;
+  stroke-opacity: 0.4;
+  transition: stroke-opacity 0.3s;
+ }
+ .link:hover {
+  stroke-opacity: 0.7;
  }
  .tooltip {
   position: absolute;
@@ -105,6 +120,8 @@ const height = document.getElementById('chart').clientHeight;
 const svg = d3.select('#chart').append('svg')
   .attr('viewBox', [0, 0, width, height]);
 
+const color = d3.scaleOrdinal(d3.schemeTableau10);
+
 const sankey = d3.sankey()
   .nodeWidth(15)
   .nodePadding(10)
@@ -114,15 +131,19 @@ sankey({ nodes, links });
 
 const tooltip = d3.select('#tooltip');
 
-svg.append('g')
+const link = svg.append('g')
   .selectAll('path')
   .data(links)
   .join('path')
     .attr('class', 'link')
     .attr('d', d3.sankeyLinkHorizontal())
-    .attr('stroke', '#5dade2')
+    .attr('stroke', d => color(d.source.name))
     .attr('stroke-width', d => Math.max(1, d.width))
-    .on('mouseover', (event, d) => {
+    .attr('opacity', 0);
+
+link.transition().duration(750).attr('opacity', 1);
+
+link.on('mouseover', (event, d) => {
       tooltip.style('opacity', 1)
              .text(`Flow from ${d.source.name} to ${d.target.name}: ${d.value} MLD`);
     })
@@ -142,17 +163,26 @@ node.append('rect')
     .attr('x', d => d.x0)
     .attr('y', d => d.y0)
     .attr('height', d => d.y1 - d.y0)
-    .attr('width', d => d.x1 - d.x0);
+    .attr('width', d => d.x1 - d.x0)
+    .attr('fill', d => color(d.name))
+    .attr('opacity', 0)
+  .transition()
+    .duration(750)
+    .attr('opacity', 1);
 
-node.append('text')
+const nodeText = node.append('text')
     .attr('x', d => d.x0 - 6)
     .attr('y', d => (d.y1 + d.y0) / 2)
     .attr('dy', '0.35em')
     .attr('text-anchor', 'end')
     .text(d => d.name)
-  .filter(d => d.x0 < width / 2)
+    .attr('opacity', 0);
+
+nodeText.filter(d => d.x0 < width / 2)
     .attr('x', d => d.x1 + 6)
     .attr('text-anchor', 'start');
+
+nodeText.transition().duration(750).attr('opacity', 1);
 
 window.addEventListener('resize', () => {
   const newWidth = document.getElementById('chart').clientWidth;
@@ -162,12 +192,14 @@ window.addEventListener('resize', () => {
   svg.attr('viewBox', [0, 0, newWidth, newHeight]);
   svg.selectAll('.link')
       .attr('d', d3.sankeyLinkHorizontal())
-      .attr('stroke-width', d => Math.max(1, d.width));
+      .attr('stroke-width', d => Math.max(1, d.width))
+      .attr('stroke', d => color(d.source.name));
   node.selectAll('rect')
       .attr('x', d => d.x0)
       .attr('y', d => d.y0)
       .attr('height', d => d.y1 - d.y0)
-      .attr('width', d => d.x1 - d.x0);
+      .attr('width', d => d.x1 - d.x0)
+      .attr('fill', d => color(d.name));
   node.selectAll('text')
       .attr('x', d => d.x0 - 6)
       .attr('y', d => (d.y1 + d.y0) / 2)
