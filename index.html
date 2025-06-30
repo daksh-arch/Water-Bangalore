@@ -65,7 +65,7 @@
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
 <script>
-const data = [
+const linksData = [
   { "source": "Cauvery", "target": "Domestic", "value": 1018 },
   { "source": "Groundwater", "target": "Domestic", "value": 872 },
   { "source": "Groundwater", "target": "Industrial", "value": 428 },
@@ -82,6 +82,23 @@ const data = [
   { "source": "Leakage", "target": "Recharge", "value": 455 }
 ];
 
+const nodes = [
+  { name: "Cauvery" },
+  { name: "Groundwater" },
+  { name: "Rainwater" },
+  { name: "Domestic" },
+  { name: "Industrial" },
+  { name: "C&I" },
+  { name: "Construction" },
+  { name: "Green Spaces" },
+  { name: "Wastewater" },
+  { name: "Treated" },
+  { name: "Untreated" },
+  { name: "Reused" },
+  { name: "Leakage" },
+  { name: "Recharge" }
+];
+
 const width = document.getElementById('chart').clientWidth;
 const height = document.getElementById('chart').clientHeight;
 
@@ -92,10 +109,14 @@ const sankey = d3.sankey()
   .nodePadding(10)
   .extent([[1, 1], [width - 1, height - 6]]);
 
-let {nodes, links} = sankey({
-  nodes: Array.from(new Set(data.flatMap(d => [d.source, d.target])), name => ({name})),
-  links: data.map(d => Object.assign({}, d))
-});
+const nodeByName = new Map(nodes.map(d => [d.name, d]));
+const links = linksData.map(d => ({
+  source: nodeByName.get(d.source),
+  target: nodeByName.get(d.target),
+  value: d.value
+}));
+
+sankey({ nodes, links });
 
 svg.append('g')
   .selectAll('path')
@@ -144,10 +165,7 @@ window.addEventListener('resize', () => {
   const newWidth = document.getElementById('chart').clientWidth;
   const newHeight = document.getElementById('chart').clientHeight;
   sankey.extent([[1,1],[newWidth-1,newHeight-6]]);
-  ({nodes, links} = sankey({
-    nodes: nodes.map(d => ({...d})),
-    links: data.map(d => Object.assign({}, d))
-  }));
+  sankey({ nodes, links });
   svg.attr('viewBox', [0,0,newWidth,newHeight]);
   svg.selectAll('.link')
      .data(links)
