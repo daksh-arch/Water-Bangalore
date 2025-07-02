@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bangalore Urban Water Flow – 2021</title>
+<style>
+  :root {
+    --text-dark: #222;
+    --text-light: #555;
+    --bg-light: #fafafa;
+    --accent: #1477d4;
+  }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    margin: 0;
+    background: var(--bg-light);
+    color: var(--text-dark);
+    line-height: 1.6;
+  }
+  header, section, footer {
+    padding: 3rem 1rem;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 2.6rem;
+    margin-bottom: 0.3rem;
+  }
+  p.subtitle {
+    font-size: 1.1rem;
+    color: var(--text-light);
+    margin-top: 0;
+  }
+  h2 {
+    margin-top: 0;
+    font-size: 1.8rem;
+  }
+  #chart {
+    width: 100%;
+    height: 500px;
+    position: relative;
+  }
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+  path.link {
+    fill: none;
+    stroke-opacity: 0.6;
+    stroke-linecap: round;
+    transition: stroke-opacity 0.3s;
+  }
+  path.link.highlight {
+    stroke-opacity: 0.9;
+  }
+  circle.node {
+    stroke: #333;
+    stroke-width: 1;
+    fill: white;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+  }
+  text.label {
+    font-size: 12px;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+  }
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 1rem 0;
+  }
+  button:focus {
+    outline: none;
+  }
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bangalore's Hidden Water Economy</h1>
+  <p class="subtitle">Where does the city’s water come from — and where does it go? This data-driven story traces every drop through supply, use, treatment, and reuse in 2021.</p>
+</header>
+
+<section id="context">
+  <h2>Why This Matters</h2>
+  <p>Bangalore’s water crisis isn’t about scarcity — it’s about flow. The city depends heavily on distant rivers, unregulated borewells, and fragile infrastructure. This story maps the city’s water metabolism to reveal where interventions are most needed.</p>
+</section>
+
+<section id="sankey">
+  <h2>The Flow</h2>
+  <p>This Sankey diagram visualizes Bangalore’s entire urban water system as of 2021. Hover to explore each flow. Click the button to isolate reuse streams.</p>
+  <div id="chart"></div>
+  <button id="highlight-btn">Highlight Reuse Flow</button>
+  <div id="tooltip" class="tooltip"></div>
+</section>
+
+<section id="insights">
+  <h2>What the Data Reveals</h2>
+  <ul>
+    <li><strong>1. Domestic use dominates:</strong> Over 70% of all water ends up in homes — yet much of it goes untreated.</li>
+    <li><strong>2. Leaky pipes, hidden recharge:</strong> Infrastructure losses contribute more to aquifer recharge than rainwater harvesting.</li>
+    <li><strong>3. Reuse is growing, but small:</strong> Only 30% of treated wastewater is reused, mostly by industry and landscaping.</li>
+  </ul>
+</section>
+
+<section id="conclusion">
+  <h2>Designing a Better System</h2>
+  <p>With better incentives for reuse, stricter borewell tracking, and decentralized treatment, Bangalore can shift from a linear to a circular water economy. This story offers a snapshot of what that transformation must address.</p>
+</section>
+
+<footer>
+  <p>Sources: BWSSB 2021 reports. Built by Codex for demonstration purposes.</p>
+  <p>&copy; 2021</p>
+</footer>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const nodes = [
+  { id: "Cauvery", group: "Sources" },
+  { id: "Groundwater", group: "Sources" },
+  { id: "Rainwater", group: "Sources" },
+  { id: "Domestic", group: "Users" },
+  { id: "Industrial", group: "Users" },
+  { id: "C&I", group: "Users" },
+  { id: "Construction", group: "Users" },
+  { id: "Green Spaces", group: "Users" },
+  { id: "Wastewater", group: "Treatment" },
+  { id: "Treated", group: "Treatment" },
+  { id: "Untreated", group: "Treatment" },
+  { id: "Reused", group: "Discharge" },
+  { id: "Recharge", group: "Discharge" },
+  { id: "Leakage", group: "Middlemen" }
+];
+
+const links = [
+  { source: "Cauvery", target: "Domestic", value: 1018 },
+  { source: "Groundwater", target: "Domestic", value: 872 },
+  { source: "Groundwater", target: "Industrial", value: 428 },
+  { source: "Groundwater", target: "C&I", value: 47 },
+  { source: "Groundwater", target: "Construction", value: 78 },
+  { source: "Groundwater", target: "Green Spaces", value: 24 },
+  { source: "Rainwater", target: "Domestic", value: 19 },
+  { source: "Domestic", target: "Wastewater", value: 1512 },
+  { source: "Industrial", target: "Wastewater", value: 265 },
+  { source: "C&I", target: "Wastewater", value: 164 },
+  { source: "Wastewater", target: "Treated", value: 1489 },
+  { source: "Wastewater", target: "Untreated", value: 451 },
+  { source: "Treated", target: "Reused", value: 582 },
+  { source: "Leakage", target: "Recharge", value: 455 }
+];
+
+// Compute totals per node to size circles
+const totals = {};
+nodes.forEach(n => totals[n.id] = 0);
+links.forEach(l => {
+  totals[l.source] += l.value;
+  totals[l.target] += l.value;
+});
+const maxTotal = d3.max(Object.values(totals));
+const maxLink = d3.max(links, d => d.value);
+
+const radiusScale = d3.scaleSqrt().domain([0, maxTotal]).range([8, 40]);
+const linkWidth = d3.scaleLinear().domain([0, maxLink]).range([1, 18]);
+const color = d3.scaleOrdinal(d3.schemeTableau10);
+
+const chart = d3.select('#chart');
+const width = chart.node().clientWidth;
+const height = chart.node().clientHeight;
+
+const svg = chart.append('svg')
+  .attr('viewBox', [0,0,width,height]);
+
+// Fixed positions for nodes
+const pos = {
+  "Cauvery": [width*0.1, 100],
+  "Groundwater": [width*0.1, 220],
+  "Rainwater": [width*0.1, 340],
+  "Leakage": [width*0.3, 220],
+  "Domestic": [width*0.5, 120],
+  "Industrial": [width*0.5, 220],
+  "C&I": [width*0.5, 300],
+  "Construction": [width*0.5, 380],
+  "Green Spaces": [width*0.5, 460],
+  "Wastewater": [width*0.7, 260],
+  "Treated": [width*0.7, 160],
+  "Untreated": [width*0.7, 360],
+  "Reused": [width*0.9, 180],
+  "Recharge": [width*0.9, 380]
+};
+
+// Draw links
+const tooltip = d3.select('#tooltip');
+
+const link = svg.append('g')
+  .selectAll('path')
+  .data(links)
+  .join('path')
+    .attr('class', 'link')
+    .attr('stroke', d => color(d.source))
+    .attr('d', d => {
+      const s = pos[d.source];
+      const t = pos[d.target];
+      const r1 = radiusScale(totals[d.source]);
+      const r2 = radiusScale(totals[d.target]);
+      return d3.linkHorizontal()({
+        source: [s[0] + r1, s[1]],
+        target: [t[0] - r2, t[1]]
+      });
+    })
+    .attr('stroke-width', d => linkWidth(d.value))
+    .on('mouseover', (event, d) => {
+      tooltip.style('opacity', 1)
+             .html(`Flow from <b>${d.source}</b> to <b>${d.target}</b>: ${d.value} MLD`);
+    })
+    .on('mousemove', event => {
+      tooltip.style('left', (event.pageX + 8) + 'px')
+             .style('top', (event.pageY - 20) + 'px');
+    })
+    .on('mouseout', () => tooltip.style('opacity', 0));
+
+// Draw nodes
+const node = svg.append('g')
+  .selectAll('g')
+  .data(nodes)
+  .join('g');
+
+node.append('circle')
+  .attr('class', 'node')
+  .attr('fill', d => color(d.id))
+  .attr('cx', d => pos[d.id][0])
+  .attr('cy', d => pos[d.id][1])
+  .attr('r', d => radiusScale(totals[d.id]));
+
+node.append('text')
+  .attr('class', 'label')
+  .attr('x', d => pos[d.id][0])
+  .attr('y', d => pos[d.id][1])
+  .text(d => d.id);
+
+let highlighted = false;
+d3.select('#highlight-btn').on('click', () => {
+  highlighted = !highlighted;
+  link.classed('highlight', d => highlighted && d.target === 'Reused')
+      .style('stroke-opacity', d => highlighted ? (d.target === 'Reused' ? 0.9 : 0.1) : 0.6);
+});
+
+</script>
+</body>
+</html>
